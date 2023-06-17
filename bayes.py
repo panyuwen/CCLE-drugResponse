@@ -98,7 +98,26 @@ def bayes(data, phen, cv_fold=10, cv_repeat=5):
 			recall = TP * 1.0 / (TP + FN)
 			f1 = 2.0 * TP / (2 * TP + FP + FN)
 
-	return best_model, best_auc, f1, precision, recall, accuracy
+
+	## metrics using all training data
+
+	y_pred_prob = model.predict_proba(X)
+	y_pred_clas = np.argmax(y_pred_prob, axis=1)
+
+	train_auc = roc_auc_score(y, y_pred_prob[:,1])
+
+	TP = sum((y_pred_clas == 1) & (y == 1))
+	FP = sum((y_pred_clas == 1) & (y == 0))
+	FN = sum((y_pred_clas == 0) & (y == 1))
+	TN = sum((y_pred_clas == 0) & (y == 0))
+
+	train_accuracy = (TP + TN) * 1.0 / (TP + TN + FP + FN)
+
+	train_precision = TP * 1.0 / (TP + FP)
+	train_recall = TP * 1.0 / (TP + FN)
+	train_f1 = 2.0 * TP / (2 * TP + FP + FN)
+
+	return best_model, best_auc, f1, precision, recall, accuracy, train_auc, train_f1, train_precision, train_recall, train_accuracy
 
 
 def main(output, datatypelist, samplelist, compound, tumortype='all'):
@@ -134,7 +153,7 @@ def main(output, datatypelist, samplelist, compound, tumortype='all'):
 
 
 	# model fitting
-	model, auc, f1, precision, recall, accuracy = bayes(data, phen)
+	model, auc, f1, precision, recall, accuracy, train_auc, train_f1, train_precision, train_recall, train_accuracy = bayes(data, phen)
 
 
 	with open(output+'_genelist.txt', 'w') as f:
@@ -145,11 +164,11 @@ def main(output, datatypelist, samplelist, compound, tumortype='all'):
 		pickle.dump(model, f)
 
 	with open(output+'_metrics.txt', 'w') as f:
-		f.write('AUC:\t' + str(auc) + '\n')
-		f.write('F1:\t' + str(f1) + '\n')
-		f.write('precision:\t' + str(precision) + '\n')
-		f.write('recall:\t' + str(recall) + '\n')
-		f.write('accuracy:\t' + str(accuracy) + '\n')
+		f.write('AUC:\t{}\t{}\n'.format(auc, train_auc))
+		f.write('F1:\t{}\t{}\n'.format(f1, train_f1))
+		f.write('precision:\t{}\t{}\n'.format(precision, train_precision))
+		f.write('recall:\t{}\t{}\n'.format(recall, train_recall))
+		f.write('accuracy:\t{}\t{}\n'.format(accuracy, train_accuracy))
 
 
 	# #load model
