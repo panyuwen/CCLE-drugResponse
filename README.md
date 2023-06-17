@@ -23,5 +23,9 @@ python bayes.py datatypelist compound
 python bayes.py SNP,MUT 17-AAG
 ```
 
+## Deep Neural Network   
+developing...
+
+
 By: Yuwen Pan, 2023  
 Contact: [panyuwen.x@gmail.com](mailto:panyuwen.x@gmail.com)
