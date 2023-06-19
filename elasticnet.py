@@ -29,7 +29,7 @@ def cor_one(list1, list2):
 		return abs(stats.pearsonr(list(df['l1']), list(df['l2'])).statistic)
 
 
-def main_cor(data, phen, cor_cut=0.1):
+def main_cor(data, phen, cor_cut=0.1, ntop=500):
 	# corr
 	cor = pd.DataFrame({'gene':list(data.columns)})
 	cor['cor'] = cor['gene'].apply(lambda x: cor_one(list(data[x]), list(phen['phenotype'])))
