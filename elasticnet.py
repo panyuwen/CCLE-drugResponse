@@ -34,7 +34,8 @@ def main_cor(data, phen, cor_cut=0.1, ntop=500):
 	cor = pd.DataFrame({'gene':list(data.columns)})
 	cor['cor'] = cor['gene'].apply(lambda x: cor_one(list(data[x]), list(phen['phenotype'])))
 
-	cor = cor[cor['cor']>cor_cut]
+	cor.sort_values(['cor'], ascending=False, inplace=True)
+	cor = cor[cor['cor']>cor_cut].head(n=ntop)
 
 	return list(cor['gene'])
 
