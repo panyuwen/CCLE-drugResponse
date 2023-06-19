@@ -3,7 +3,11 @@ drug response prediction based on the CCLE data
 
 ## v0.0.1
 
-the initial elasticNet & bayes model, following the instruction of the early CCLE paper (The Cancer Cell Line Encyclopedia enables predictive modelling of anticancer drug sensitivity. Nature. 2012)
+the initial elasticNet & bayes model, following the instruction of the early CCLE paper (The Cancer Cell Line Encyclopedia enables predictive modelling of anticancer drug sensitivity. Nature. 2012)   
+
+
+to update feature selection in v0.0.2
+
 
 ## ElasticNet regression
 
