@@ -28,7 +28,16 @@ python bayes.py SNP,MUT 17-AAG
 ```
 
 ## Deep Neural Network   
-developing...
+
+MLP implemented,     
+9000 features selected (3000 for each data type)    
+more data could be employed due to fast speed    
+cell type, tumor type, and compound were one-hot encoded in the input data    
+
+```
+# usgae:    
+python mlp.py    
+```
 
 
 By: Yuwen Pan, 2023  
