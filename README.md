@@ -31,10 +31,9 @@ python bayes.py SNP,MUT 17-AAG
 
 MLP implemented,     
 9000 features selected (3000 for each data type)    
-more data could be employed due to fast speed    
 cell type, tumor type, and compound were one-hot encoded in the input data    
 
-```
+```python
 # usgae:    
 python mlp.py    
 ```
