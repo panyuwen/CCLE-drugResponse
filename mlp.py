@@ -10,6 +10,7 @@ import seaborn as sns
 import matplotlib.ticker as ticker
 import time
 import socket
+# import subprocess
 
 
 class ImportDataSet(Dataset):
@@ -32,36 +33,58 @@ def build_data(filenameX, filenameY, batch_size, num_workers):
     data = ImportDataSet(filenameX, filenameY)
     train_data, valid_data = random_split(dataset=data, lengths=[0.9,0.1])
     
-    train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    valid_dataloader = DataLoader(valid_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=num_workers, drop_last=True)
+    valid_dataloader = DataLoader(valid_data, batch_size=batch_size, shuffle=True, num_workers=num_workers, drop_last=True)
 
     return train_dataloader, valid_dataloader
 
 
 class MLP(nn.Module):
-    def __init__(self):
+    def __init__(self, in_dim, dropoutProb=0.15):
         super().__init__()
-        self.model = nn.Sequential(
-            nn.Linear(9497, 5000),
+        
+        out_dim = in_dim // 2
+        self.block_init = nn.Sequential(
+            nn.Linear(in_dim, out_dim),
+            nn.BatchNorm1d(out_dim),
             nn.ReLU(),
-            nn.Dropout(0.15), 
-            nn.Linear(5000, 5000),
-            nn.ReLU(),
-            nn.Dropout(0.15), 
-            nn.Linear(5000, 2000),
-            nn.ReLU(),
-            nn.Dropout(0.15), 
-            nn.Linear(2000, 500),
-            nn.ReLU(),
-            nn.Dropout(0.15), 
-            nn.Linear(500, 100),
-            nn.ReLU(),
-            nn.Dropout(0.15), 
-            nn.Linear(100, 1)
+            nn.Dropout(dropoutProb)
         )
 
+        in_dim, out_dim = out_dim, out_dim // 4
+        self.block_2 = nn.Sequential(
+            nn.Linear(in_dim, out_dim),
+            nn.BatchNorm1d(out_dim),
+            nn.ReLU(),
+            nn.Dropout(dropoutProb)
+        )
+
+        in_dim, out_dim = out_dim, out_dim // 8
+        self.block_3 = nn.Sequential(
+            nn.Linear(in_dim, out_dim),
+            nn.BatchNorm1d(out_dim),
+            nn.ReLU(),
+            nn.Dropout(dropoutProb)
+        )
+
+        in_dim, out_dim = out_dim, out_dim // 16
+        self.block_4 = nn.Sequential(
+            nn.Linear(in_dim, out_dim),
+            nn.BatchNorm1d(out_dim),
+            nn.ReLU(),
+            nn.Dropout(dropoutProb)
+        )
+
+        in_dim, out_dim = out_dim, 1
+        self.block_last = nn.Linear(in_dim, out_dim)
+
     def forward(self, x):
-        out = self.model(x)
+        out = self.block_init(x)
+        out = self.block_2(out)
+        out = self.block_3(out)
+        out = self.block_4(out)
+        out = self.block_last(out)
+
         return out
 
 
@@ -129,8 +152,10 @@ def timer(start_time, end_time):
     return r_t
     
 
-def main(batch_size, num_workers, learning_rate, nepoch, outputprefix, cudadevice, filenameX, filenameY):
+def main(batch_size, num_workers, learning_rate, nepoch, outputprefix, cudadevice, filenameX, filenameY, in_dim):
     start_time = time.perf_counter()
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(cudadevice)
     device = (
         "cuda"
         if torch.cuda.is_available()
@@ -138,7 +163,6 @@ def main(batch_size, num_workers, learning_rate, nepoch, outputprefix, cudadevic
         if torch.backends.mps.is_available()
         else "cpu"
     )
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(cudadevice)
 
     with open(outputprefix + '.logfile', 'w') as log:
         log.write('Hostname: '+socket.gethostname()+'\n')
@@ -148,7 +172,8 @@ def main(batch_size, num_workers, learning_rate, nepoch, outputprefix, cudadevic
         log.write('Start time: '+time.strftime("%Y-%m-%d %X",time.localtime())+'\n')
 
     ## model
-    model = MLP().to(device)
+    # in_dim = int(subprocess.check_output('wc -l '+filenameY, shell=True).decode("utf-8").strip().split(' ')[0])
+    model = MLP(in_dim).to(device)
 
     ## optimization
     # loss_fn = nn.CrossEntropyLoss()
@@ -203,9 +228,10 @@ if __name__ == '__main__':
         num_workers = 16, 
         learning_rate = 1e-5, 
         nepoch = 200, 
-        outputprefix = 'EXP_MUT_SNP.scale9000.1', 
-        cudadevice = '0', 
-        filenameX = 'EXP_MUT_SNP.scale9000.X.txt.gz', 
-        filenameY = 'EXP_MUT_SNP.scale9000.Y.txt'
+        outputprefix = 'EXP_MUT_SNP.scale28K.1', 
+        cudadevice = '1', 
+        filenameX = 'EXP_MUT_SNP.scale28K.X.txt.gz', 
+        filenameY = 'EXP_MUT_SNP.scale28K.Y.txt',
+        in_dim = 28149
     )
 
