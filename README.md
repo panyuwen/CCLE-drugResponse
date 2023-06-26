@@ -36,15 +36,17 @@ Contact: [panyuwen.x@gmail.com](mailto:panyuwen.x@gmail.com)
 
 
 ## Change log
+### v0.0.2
+
+fix some bugs    
+more features included
+
+
 ### v0.0.1
 
 the initial elasticNet & bayes model, following the instruction of the early CCLE paper (The Cancer Cell Line Encyclopedia enables predictive modelling of anticancer drug sensitivity. Nature. 2012)   
 
 
-### v0.0.2
-
-fix some bugs
-more features included
 
 
 
