@@ -13,7 +13,7 @@ from sklearn.model_selection import RepeatedKFold
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import ElasticNet
 from sklearn.linear_model import ElasticNetCV
-from sklearn.metrics import explained_variance_score
+from sklearn.metrics import r2_score
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 from sklearn.naive_bayes import GaussianNB
@@ -116,11 +116,11 @@ def ElasticNetTrain(X, Y, cv_fold=10, cv_repeat=10, ratios=np.arange(0, 1, 0.1),
     Y_train_pred = model.predict(X_train)
     Y_valid_pred = model.predict(X_valid)
 
-    train_R2 = explained_variance_score(Y_train, Y_train_pred)
+    train_R2 = r2_score(Y_train, Y_train_pred)
     train_MAE = mean_absolute_error(Y_train, Y_train_pred)
     train_MSE = mean_squared_error(Y_train, Y_train_pred)
 
-    valid_R2 = explained_variance_score(Y_valid, Y_valid_pred)
+    valid_R2 = r2_score(Y_valid, Y_valid_pred)
     valid_MAE = mean_absolute_error(Y_valid, Y_valid_pred)
     valid_MSE = mean_squared_error(Y_valid, Y_valid_pred)
 
