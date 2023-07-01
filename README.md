@@ -1,23 +1,13 @@
-# CCLE-drugResponse
+# CCLE-drugResponse (developing)
 drug response prediction based on the CCLE data
 
 
-## ElasticNet regression
+## ElasticNet regression / NaiveBayes classification 
 
 ```python
-# usage: 
-python elasticnet.py datatypelist phenotype compound
+# usage:
 # e.g., 
-python elasticnet.py SNP,MUT ActArea 17-AAG
-```
-
-## NaiveBayes
-
-```python
-# usage: 
-python bayes.py datatypelist compound
-# e.g., 
-python bayes.py SNP,MUT 17-AAG
+python elasticnet_bayes.py --featuresize 15K --datatype EXP_SNP --compound separate --modeltype elasticnet --out elasticnet.15K.EXP_SNP.separate
 ```
 
 ## Deep Neural Network   
@@ -36,10 +26,14 @@ Contact: [panyuwen.x@gmail.com](mailto:panyuwen.x@gmail.com)
 
 
 ## Change log
+### v0.0.3 beta
+
+merge elasticnet & bayes; options for featuresize; define a dataset for benchmark analysis    
+
+
 ### v0.0.2
 
-fix some bugs    
-more features included
+fix some bugs; more features included
 
 
 ### v0.0.1
