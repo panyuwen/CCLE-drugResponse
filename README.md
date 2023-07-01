@@ -4,8 +4,12 @@ drug response prediction based on the CCLE data
 
 ## ElasticNet regression / NaiveBayes classification 
 
-```python
+```shell
 # usage:
+python elasticnet_bayes.py -h
+```
+
+```shell
 # e.g., 
 python elasticnet_bayes.py --featuresize 10K --datatype EXP_SNP --compound separate --modeltype elasticnet --out elasticnet.10K.EXP_SNP.separate
 ```
@@ -15,7 +19,7 @@ python elasticnet_bayes.py --featuresize 10K --datatype EXP_SNP --compound separ
 MLP implemented,      
 cell type, tumor type, and compound were one-hot encoded in the input data    
 
-```python
+```shell
 # usgae:    
 python mlp.py    
 ```
