@@ -7,7 +7,7 @@ drug response prediction based on the CCLE data
 ```python
 # usage:
 # e.g., 
-python elasticnet_bayes.py --featuresize 15K --datatype EXP_SNP --compound separate --modeltype elasticnet --out elasticnet.15K.EXP_SNP.separate
+python elasticnet_bayes.py --featuresize 10K --datatype EXP_SNP --compound separate --modeltype elasticnet --out elasticnet.10K.EXP_SNP.separate
 ```
 
 ## Deep Neural Network   
