@@ -16,24 +16,27 @@ python elasticnet_bayes.py --featuresize 10K --datatype EXP_SNP --compound separ
 
 ## Deep Neural Network   
 
-MLP implemented,      
-cell type, tumor type, and compound were one-hot encoded in the input data    
-
 ```shell
-# usgae:    
-python mlp.py    
+# usage:
+python nn.py -h
 ```
 
+```shell
+# e.g., 
+python nn.py --device-id 0 --feature-size 10K --label-type continuous --model-type MLP --out MLP.10K.continuous
+```
 
+---
 By: Yuwen Pan, 2023  
-Contact: [panyuwen.x@gmail.com](mailto:panyuwen.x@gmail.com)
+Contact: [panyuwen.x@gmail.com](mailto:panyuwen.x@gmail.com)    
 
 
 ## Change log
 ### v0.0.3 beta
 
 merge elasticnet & bayes; options for featuresize; define a dataset for benchmark analysis    
-
+for MLP, tumor type, and compound were one-hot encoded in the input data; continuous & discrete labels    
+attention is under development
 
 ### v0.0.2
 
