@@ -311,6 +311,7 @@ def MLP_train_valid(train_dataloader, valid_dataloader, featurecount, nepoch, la
                 'optim': optimizer.state_dict(),
             }
             torch.save(checkpoint, output+'.check_point.pth')
+            min_loss = float(valid_metrics_list[0])
 
     plot_loss(output+'.metrics.txt', output+'.metrics.pdf')
 
