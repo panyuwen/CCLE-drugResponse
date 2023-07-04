@@ -48,7 +48,7 @@ class ImportDataSet(Dataset):
         return len(self.X[0])
 
 
-def build_data(inputX, inputY, rankEXP, rankSNP, rankMUT, featuresize, labeltype, batch_size, num_workers):
+def build_data(inputX, inputY, rankEXP, rankSNP, rankMUT, featuresize, labeltype, batch_size, num_workers, output):
     X = pd.read_csv(inputX, sep='\t', index_col=['cell'])
     Y = pd.read_csv(inputY, header=None)
     if labeltype == 'discrete':
@@ -72,6 +72,10 @@ def build_data(inputX, inputY, rankEXP, rankSNP, rankMUT, featuresize, labeltype
 
     celltypelist = list(set(X.index))
     X.drop(celltypelist, axis=1, inplace=True)
+    
+    with open(output + '.featurelist.txt', 'w') as fin:
+        for i in list(X.columns):
+            fin.write(i + '\n')
 
     ## dataloader
     data = ImportDataSet(X, Y)
@@ -317,8 +321,11 @@ def MLP_train_valid(train_dataloader, valid_dataloader, featurecount, nepoch, la
 
     return str(model)
     ## to reload model
-    # model = MLP().to(device)
-    # model.load_state_dict(torch.load("model.pth"))
+    # model = MLP(in_dim, out_dim).to(device)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    # checkpoint = torch.load(output + ".check_point.pth")
+    # model.load_state_dict(checkpoint['model'])
+    # optimizer.load_state_dict(checkpoint['optim'])
 
 
 def Attention_train_valid():
@@ -380,7 +387,7 @@ def main():
 
     ######################################
     
-    train_dataloader, valid_dataloader, featurecount = build_data(args.inputX, args.inputY, args.rankEXP, args.rankSNP, args.rankMUT, args.feature_size, args.label_type, args.batch_size, args.num_workers)
+    train_dataloader, valid_dataloader, featurecount = build_data(args.inputX, args.inputY, args.rankEXP, args.rankSNP, args.rankMUT, args.feature_size, args.label_type, args.batch_size, args.num_workers, args.out)
 
     if args.model_type == 'MLP':
         modelstructure = MLP_train_valid(train_dataloader, valid_dataloader, featurecount, args.nepoch, args.label_type, device, args.lr, args.out)
@@ -394,7 +401,7 @@ def main():
     with open(args.out + '.logfile', 'a') as log:
         log.write('End time: '+time.strftime("%Y-%m-%d %X",time.localtime())+'\n')
         log.write('Lasting: '+timer(start_time, end_time)+'\n\n')
-        log.write(f'Parameters: \n\tbatch_size:\t{args.batch_size} \n\tnum_workers:\t{args.num_workers} \n\tlearning_rate:\t{args.lr} \n\tnum_epoch:\t{args.nepoch} \n\toutputprefix:\t{args.out} \n\tcuda device:\t{args.device_id} \n\tfeature size:\t{args.feature_size} \n\tlabel type:\t{args.label_type} model type:\t{args.model_type} \n\n')
+        log.write(f'Parameters: \n\tbatch_size:\t{args.batch_size} \n\tnum_workers:\t{args.num_workers} \n\tlearning_rate:\t{args.lr} \n\tnum_epoch:\t{args.nepoch} \n\toutputprefix:\t{args.out} \n\tcuda device:\t{args.device_id} \n\tfeature size:\t{args.feature_size} \n\tlabel type:\t{args.label_type} \n\tmodel type:\t{args.model_type} \n\n')
         log.write('Model structure:\n')
         log.write(str(modelstructure))
 
