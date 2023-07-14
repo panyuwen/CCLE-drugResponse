@@ -185,46 +185,115 @@ class continuous_metrics():
         return R2, MAE, MSE
 
 
+# class discrete_metrics():
+#     """
+#     For one-class
+#     """
+#     def __init__(self):
+#         self.TP = 0
+#         self.FP = 0
+#         self.FN = 0
+#         self.TN = 0
+#         self.AUC_sum = 0
+#         self.nbatch = 0
+
+#     def reset(self):
+#         self.TP = 0
+#         self.FP = 0
+#         self.FN = 0
+#         self.TN = 0
+#         self.AUC_sum = 0
+#         self.nbatch = 0
+
+#     def update(self, y_true, y_pred):
+#         y_pred_prob = F.softmax(y_pred, dim=1)
+#         y_pred_clas = y_pred_prob.argmax(1)
+
+#         y_true = y_true[:, 1]
+        
+#         self.TP += sum((y_pred_clas == 1) & (y_true == 1))
+#         self.FP += sum((y_pred_clas == 1) & (y_true == 0))
+#         self.FN += sum((y_pred_clas == 0) & (y_true == 1))
+#         self.TN += sum((y_pred_clas == 0) & (y_true == 0))
+
+#         self.AUC_sum += roc_auc_score(y_true.cpu().detach().numpy(), y_pred_prob[:,1].cpu().detach().numpy())
+
+#         self.nbatch += 1
+    
+#     def output(self):
+#         acc = (self.TP + self.TN) * 1.0 / (self.TP + self.TN + self.FP + self.FN)
+#         precision = self.TP * 1.0 / (self.TP + self.FP)
+#         recall = self.TP * 1.0 / (self.TP + self.FN)
+#         f1 = 2.0 * self.TP / (2 * self.TP + self.FP + self.FN)
+#         auc = self.AUC_sum / self.nbatch
+
+#         return auc, f1.item(), precision.item(), recall.item(), acc.item()
+
+
 class discrete_metrics():
+    """
+    For multi-class
+    Returns: 
+    class1-metrics;class2-metrics;...;macro(average)-metrics
+    """
     def __init__(self):
-        self.TP = 0
-        self.FP = 0
-        self.FN = 0
-        self.TN = 0
-        self.AUC_sum = 0
+        self.TP = []
+        self.FP = []
+        self.FN = []
+        self.TN = []
+        self.AUC_sum = []
         self.nbatch = 0
 
     def reset(self):
-        self.TP = 0
-        self.FP = 0
-        self.FN = 0
-        self.TN = 0
-        self.AUC_sum = 0
+        self.TP = []
+        self.FP = []
+        self.FN = []
+        self.TN = []
+        self.AUC_sum = []
         self.nbatch = 0
 
     def update(self, y_true, y_pred):
         y_pred_prob = F.softmax(y_pred, dim=1)
         y_pred_clas = y_pred_prob.argmax(1)
-
-        y_true = y_true[:, 1]
         
-        self.TP += sum((y_pred_clas == 1) & (y_true == 1))
-        self.FP += sum((y_pred_clas == 1) & (y_true == 0))
-        self.FN += sum((y_pred_clas == 0) & (y_true == 1))
-        self.TN += sum((y_pred_clas == 0) & (y_true == 0))
+        for i in range(y_true.shape[1]):
+            y_true_ = y_true[:, i].cpu().detach().numpy()
+            y_pred_clas_ = (y_pred_clas == i).cpu().detach().numpy() - 0
+            y_pred_prob_ = y_pred_prob[:, i].cpu().detach().numpy()
 
-        self.AUC_sum += roc_auc_score(y_true.cpu().detach().numpy(), y_pred_prob[:,1].cpu().detach().numpy())
+            if len(self.TP) <= i:
+                self.TP.append(sum((y_pred_clas_ == 1) & (y_true_ == 1)))
+                self.FP.append(sum((y_pred_clas_ == 1) & (y_true_ == 0)))
+                self.FN.append(sum((y_pred_clas_ == 0) & (y_true_ == 1)))
+                self.TN.append(sum((y_pred_clas_ == 0) & (y_true_ == 0)))
+                self.AUC_sum.append(roc_auc_score(y_true_, y_pred_prob_))
+            else:
+                self.TP[i] += sum((y_pred_clas_ == 1) & (y_true_ == 1))
+                self.FP[i] += sum((y_pred_clas_ == 1) & (y_true_ == 0))
+                self.FN[i] += sum((y_pred_clas_ == 0) & (y_true_ == 1))
+                self.TN[i] += sum((y_pred_clas_ == 0) & (y_true_ == 0))
+                self.AUC_sum[i] += roc_auc_score(y_true_, y_pred_prob_)
 
         self.nbatch += 1
     
     def output(self):
+        self.TP = np.array(self.TP)
+        self.FP = np.array(self.FP)
+        self.FN = np.array(self.FN)
+        self.TN = np.array(self.TN)
+        self.AUC_sum = np.array(self.AUC_sum)
+
         acc = (self.TP + self.TN) * 1.0 / (self.TP + self.TN + self.FP + self.FN)
         precision = self.TP * 1.0 / (self.TP + self.FP)
         recall = self.TP * 1.0 / (self.TP + self.FN)
         f1 = 2.0 * self.TP / (2 * self.TP + self.FP + self.FN)
         auc = self.AUC_sum / self.nbatch
 
-        return auc, f1.item(), precision.item(), recall.item(), acc.item()
+        return ';'.join(map(str, auc)) +';'+ str(auc.mean()), \
+                ';'.join(map(str, f1)) +';'+ str(f1.mean()), \
+                ';'.join(map(str, precision)) +';'+ str(precision.mean()), \
+                ';'.join(map(str, recall)) +';'+ str(recall.mean()), \
+                ';'.join(map(str, acc)) +';'+ str(acc.mean())
 
 
 def MLP_train(dataloader, model, loss_fn, optimizer, device, labeltype):
@@ -329,6 +398,7 @@ def MLP_train_valid(train_dataloader, valid_dataloader, featurecount, nepoch, la
     # optimizer.load_state_dict(checkpoint['optim'])
 
 
+# https://github.com/sooftware/attentions
 class ScaledDotProductAttention(nn.Module):
     """
     Scaled Dot-Product Attention proposed in "Attention Is All You Need"
@@ -364,6 +434,7 @@ class ScaledDotProductAttention(nn.Module):
         return context, attn
 
 
+# https://github.com/sooftware/attentions
 class MultiHeadAttention(nn.Module):
     """
     Multi-Head Attention proposed in "Attention Is All You Need"
@@ -417,27 +488,75 @@ class MultiHeadAttention(nn.Module):
     def forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         batch_size = value.size(0)
 
-        query = self.query_proj(query).view(batch_size, -1, self.num_heads, self.d_head)  # BxQ_LENxNxD
-        key = self.key_proj(key).view(batch_size, -1, self.num_heads, self.d_head)        # BxK_LENxNxD
-        value = self.value_proj(value).view(batch_size, -1, self.num_heads, self.d_head)  # BxV_LENxNxD
+        query = self.query_proj(query).view(batch_size, -1, self.num_heads, self.d_head)  # B x Q_LEN x N x D
+        key = self.key_proj(key).view(batch_size, -1, self.num_heads, self.d_head)        # B x K_LEN x N x D
+        value = self.value_proj(value).view(batch_size, -1, self.num_heads, self.d_head)  # B x V_LEN x N x D
 
-        query = query.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)  # BNxQ_LENxD
-        key = key.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)      # BNxK_LENxD
-        value = value.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)  # BNxV_LENxD
+        query = query.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)  # BN x Q_LEN x D
+        key = key.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)      # BN x K_LEN x D
+        value = value.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)  # BN x V_LEN x D
 
         if mask is not None:
-            mask = mask.unsqueeze(1).repeat(1, self.num_heads, 1, 1)  # BxNxQ_LENxK_LEN
+            mask = mask.unsqueeze(1).repeat(1, self.num_heads, 1, 1)  # B x N x Q_LEN x K_LEN
 
         context, attn = self.scaled_dot_attn(query, key, value, mask)
 
         context = context.view(self.num_heads, batch_size, -1, self.d_head)
-        context = context.permute(1, 2, 0, 3).contiguous().view(batch_size, -1, self.num_heads * self.d_head)  # BxTxND
+        context = context.permute(1, 2, 0, 3).contiguous().view(batch_size, -1, self.num_heads * self.d_head)  # B x T x ND
 
         return context, attn
 
 
-def Attention_train_valid():
-    return None
+class Attention(nn.Module):
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, )
+
+
+def Attention_train_valid(train_dataloader, valid_dataloader, featurecount, nepoch, labeltype, device, lr, output):
+    if labeltype == 'continuous':
+        model = Attention().to(device)
+        loss_fn = nn.MSELoss()
+    else:
+        model = Attention().to(device)
+        loss_fn = nn.CrossEntropyLoss()
+
+    # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    with open(output+'.metrics.txt', 'w') as log:
+        if labeltype == 'continuous':
+            log.write('epoch\ttrain_loss\ttrain_R2\ttrain_MAE\ttrain_MSE\tvalid_loss\tvalid_R2\tvalid_MAE\tvalid_MSE\n')
+        else:
+            log.write('epoch\ttrain_loss\ttrain_auc\ttrain_f1\ttrain_precision\ttrain_recall\ttrain_acc\tvalid_loss\tvalid_auc\tvalid_f1\tvalid_precision\tvalid_recall\tvalid_acc\n')
+
+    min_loss = float('inf')
+    for epo in range(1, nepoch+1):
+        train_metrics_list = MLP_train(train_dataloader, model, loss_fn, optimizer, device, labeltype)
+        valid_metrics_list = MLP_valid(valid_dataloader, model, loss_fn, device, labeltype)
+
+        print(f"epoch: {epo}; train_loss: {train_metrics_list[0]:>7f}; valid_loss: {valid_metrics_list[0]:>7f}")
+        with open(output+'.metrics.txt', 'a') as log:
+            train_metrics_list = list(map(str, train_metrics_list))
+            valid_metrics_list = list(map(str, valid_metrics_list))
+            log.write('\t'.join([str(epo)] + train_metrics_list + valid_metrics_list) + '\n')
+
+        if float(valid_metrics_list[0]) < min_loss:
+            checkpoint = {
+                "epoch": epo,
+                "train_loss": train_metrics_list[0],
+                "valid_loss": valid_metrics_list[0],
+                "model": model.state_dict(),
+                'optim': optimizer.state_dict(),
+            }
+            torch.save(checkpoint, output+'.check_point.pth')
+            min_loss = float(valid_metrics_list[0])
+
+    plot_loss(output+'.metrics.txt', output+'.metrics.pdf')
+
+    return str(model)
+
 
 
 def timer(start_time, end_time):
@@ -500,7 +619,7 @@ def main():
     if args.model_type == 'MLP':
         modelstructure = MLP_train_valid(train_dataloader, valid_dataloader, featurecount, args.nepoch, args.label_type, device, args.lr, args.out)
     else:
-        modelstructure = Attention_train_valid()
+        modelstructure = Attention_train_valid(train_dataloader, valid_dataloader, featurecount, args.nepoch, args.label_type, device, args.lr, args.out)
         print('not supported yet')
 
     ######################################
