@@ -34,8 +34,8 @@ def plot_loss(loss_file, fig_path):
 
 class ImportDataSet(Dataset):
     def __init__(self, dataX, dataY):
-        self.X = torch.tensor(dataX.values, dtype=torch.float32)
-        self.Y = torch.tensor(dataY.values, dtype=torch.float32)
+        self.X = torch.tensor(dataX, dtype=torch.float32)
+        self.Y = torch.tensor(dataY, dtype=torch.float32)
 
     def __len__(self):
         return len(self.Y)
@@ -49,7 +49,16 @@ class ImportDataSet(Dataset):
         return len(self.X[0])
 
 
-def build_data(inputX, inputY, rankEXP, rankSNP, rankMUT, featuresize, labeltype, batch_size, num_workers, output):
+def converf4atten(X, d_model):
+    """
+    Args:
+        X (pd.DataFrame), #cell x #feature
+    Output:
+        X (np.array), #cell * len x d_model
+    """
+    pass
+
+def build_data(modeltype, inputX, inputY, rankEXP, rankSNP, rankMUT, featuresize, labeltype, batch_size, num_workers, output, *others):
     X = pd.read_csv(inputX, sep='\t', index_col=['cell'])
     Y = pd.read_csv(inputY, header=None)
     if labeltype == 'discrete':
@@ -79,7 +88,11 @@ def build_data(inputX, inputY, rankEXP, rankSNP, rankMUT, featuresize, labeltype
             fin.write(i + '\n')
 
     ## dataloader
-    data = ImportDataSet(X, Y)
+    if modeltype == 'MLP':
+        data = ImportDataSet(X.values, Y.values)
+    else:
+        data = ImportDataSet(converf4atten(X, others[0]), Y.values)
+        
     train_data, valid_data = random_split(dataset=data, lengths=[0.9,0.1])
 
     train_dataloader = DataLoader(train_data, batch_size=batch_size, num_workers=num_workers, shuffle=True, drop_last=True)
@@ -296,7 +309,7 @@ class discrete_metrics():
                 ';'.join(map(str, acc)) +';'+ str(acc.mean())
 
 
-def MLP_train(dataloader, model, loss_fn, optimizer, device, labeltype):
+def run_train(dataloader, model, loss_fn, optimizer, device, labeltype):
     train_loss = 0
     count = 0
     if labeltype == 'continuous':
@@ -326,7 +339,7 @@ def MLP_train(dataloader, model, loss_fn, optimizer, device, labeltype):
     return train_loss / count, *metrics_calculator.output()
 
 
-def MLP_valid(dataloader, model, loss_fn, device, labeltype):
+def run_valid(dataloader, model, loss_fn, device, labeltype):
     valid_loss = 0
     count = 0
     if labeltype == 'continuous':
@@ -367,8 +380,8 @@ def MLP_train_valid(train_dataloader, valid_dataloader, featurecount, nepoch, la
 
     min_loss = float('inf')
     for epo in range(1, nepoch+1):
-        train_metrics_list = MLP_train(train_dataloader, model, loss_fn, optimizer, device, labeltype)
-        valid_metrics_list = MLP_valid(valid_dataloader, model, loss_fn, device, labeltype)
+        train_metrics_list = run_train(train_dataloader, model, loss_fn, optimizer, device, labeltype)
+        valid_metrics_list = run_valid(valid_dataloader, model, loss_fn, device, labeltype)
 
         print(f"epoch: {epo}; train_loss: {train_metrics_list[0]:>7f}; valid_loss: {valid_metrics_list[0]:>7f}")
         with open(output+'.metrics.txt', 'a') as log:
@@ -398,15 +411,15 @@ def MLP_train_valid(train_dataloader, valid_dataloader, featurecount, nepoch, la
     # optimizer.load_state_dict(checkpoint['optim'])
 
 
-# https://github.com/sooftware/attentions
 class ScaledDotProductAttention(nn.Module):
     """
+    # https://github.com/sooftware/attentions
     Scaled Dot-Product Attention proposed in "Attention Is All You Need"
     Compute the dot products of the query with all keys, divide each by sqrt(dim),
     and apply a softmax function to obtain the weights on the values
 
     Args: dim, mask
-        dim (int): dimention of attention
+        dim (int): dimention of attention, d_head: d_model // num_head
         mask (torch.Tensor): tensor containing indices to be masked
 
     Inputs: query, key, value, mask
@@ -424,19 +437,30 @@ class ScaledDotProductAttention(nn.Module):
         self.sqrt_dim = np.sqrt(dim)
 
     def forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+        # batch_size·num_head x len x d_head for Q/K/V
+        
+        # attention scores
+        # B·N x l x l
         score = torch.bmm(query, key.transpose(1, 2)) / self.sqrt_dim
 
         if mask is not None:
             score.masked_fill_(mask.view(score.size()), -float('Inf'))
 
+        # attention weights
+        # softmax activation applied along the last dimension, d_head
+        # B·N x l x l
         attn = F.softmax(score, -1)
+        
+        # Attended Value
+        # B·N x l x d_head
         context = torch.bmm(attn, value)
+        
         return context, attn
 
 
-# https://github.com/sooftware/attentions
 class MultiHeadAttention(nn.Module):
     """
+    # https://github.com/sooftware/attentions
     Multi-Head Attention proposed in "Attention Is All You Need"
     Instead of performing a single attention function with d_model-dimensional keys, values, and queries,
     project the queries, keys and values h times with different, learned linear projections to d_head dimensions.
@@ -473,7 +497,7 @@ class MultiHeadAttention(nn.Module):
         - **output** (batch, output_len, dimensions): tensor containing the attended output features.
         - **attn** (batch * num_heads, v_len): tensor containing the attention (alignment) from the encoder outputs.
     """
-    def __init__(self, d_model: int = 512, num_heads: int = 8):
+    def __init__(self, d_model: int, num_heads: int = 8):
         super(MultiHeadAttention, self).__init__()
 
         assert d_model % num_heads == 0, "d_model % num_heads should be zero."
@@ -488,38 +512,105 @@ class MultiHeadAttention(nn.Module):
     def forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         batch_size = value.size(0)
 
+        # Linear transformations
+        # followed by 
+        # Reshape the inputs for multihead splitting
         query = self.query_proj(query).view(batch_size, -1, self.num_heads, self.d_head)  # B x Q_LEN x N x D
         key = self.key_proj(key).view(batch_size, -1, self.num_heads, self.d_head)        # B x K_LEN x N x D
         value = self.value_proj(value).view(batch_size, -1, self.num_heads, self.d_head)  # B x V_LEN x N x D
 
-        query = query.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)  # BN x Q_LEN x D
-        key = key.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)      # BN x K_LEN x D
-        value = value.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)  # BN x V_LEN x D
+        query = query.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)  # B·N x Q_LEN x D
+        key = key.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)      # B·N x K_LEN x D
+        value = value.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)  # B·N x V_LEN x D
 
         if mask is not None:
             mask = mask.unsqueeze(1).repeat(1, self.num_heads, 1, 1)  # B x N x Q_LEN x K_LEN
 
+        # attention weight: B·N x l x l
+        # attended Value: B·N x l x d_head
         context, attn = self.scaled_dot_attn(query, key, value, mask)
-
+        # N x B x l x d_head
         context = context.view(self.num_heads, batch_size, -1, self.d_head)
+        # B x l x N x d_head
+        # B x l x N·d_head = B x l x d_model
         context = context.permute(1, 2, 0, 3).contiguous().view(batch_size, -1, self.num_heads * self.d_head)  # B x T x ND
 
         return context, attn
 
 
-class Attention(nn.Module):
-    def __init__(self):
+class LayerNorm(nn.Module):
+    def __init__(self, d_model, eps=1e-12):
         super().__init__()
-    
-    def forward(self, )
+        self.gamma = nn.Parameter(torch.ones(d_model))
+        self.beta = nn.Parameter(torch.zeros(d_model))
+        self.eps = eps
+
+    def forward(self, x):
+        mean = x.mean(-1, keepdim=True)
+        var = x.var(-1, unbiased=False, keepdim=True)
+
+        out = (x - mean) / torch.sqrt(var + self.eps)
+        out = self.gamma * out + self.beta
+        
+        return out
 
 
-def Attention_train_valid(train_dataloader, valid_dataloader, featurecount, nepoch, labeltype, device, lr, output):
+class FeedForward(nn.Module):
+    def __init__(self, d_model, hidden, dropoutProb=0.15):
+        super().__init__()
+        self.linear1 = nn.Linear(d_model, hidden)
+        self.dropout = nn.Dropout(dropoutProb)
+        self.linear2 = nn.Linear(hidden, d_model)
+        self.activation = nn.ReLU()
+
+    def forward(self, x):
+        x = self.linear1(x)
+        x = self.activation(x)
+        x = self.dropout(x)
+        x = self.linear2(x)
+        return x
+
+
+class Attention(nn.Module):
+    def __init__(self, l, d_model, out_featuresize, dropoutProb=0.15):
+        super().__init__()
+        self.multi_head_attention = MultiHeadAttention(d_model)
+        self.layernorm = LayerNorm(d_model)
+        self.dropout = nn.Dropout(dropoutProb)
+        self.feedforward = FeedForward(d_model, d_model)
+        self.to_output1 = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.Dropout(dropoutProb),
+            nn.Linear(d_model, 1)
+        )
+        self.to_output2 = nn.Sequential(
+            nn.Linear(l, l),
+            nn.Dropout(dropoutProb),
+            nn.Linear(l, out_featuresize)
+        )
+        
+    def forward(self, x):
+        x_ = self.multi_head_attention(query=x, key=x, value=x)
+        x_ = self.dropout(x_)
+        x = self.layernorm(x + x_)
+        
+        x_ = self.feedforward(x)
+        x_ = self.dropout(x_)
+        x = self.layernorm(x + x_)
+        
+        x = self.to_output1(x)
+        x = torch.squeeze(x, dim=-1)
+        x = self.to_output2(x)
+        
+        return x
+
+
+def Attention_train_valid(train_dataloader, valid_dataloader, l, d_model, nepoch, labeltype, device, lr, output):
     if labeltype == 'continuous':
-        model = Attention().to(device)
+        model = Attention(l, d_model, 1).to(device)
         loss_fn = nn.MSELoss()
     else:
-        model = Attention().to(device)
+        model = Attention(l, d_model, 2).to(device)
         loss_fn = nn.CrossEntropyLoss()
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
@@ -533,8 +624,8 @@ def Attention_train_valid(train_dataloader, valid_dataloader, featurecount, nepo
 
     min_loss = float('inf')
     for epo in range(1, nepoch+1):
-        train_metrics_list = MLP_train(train_dataloader, model, loss_fn, optimizer, device, labeltype)
-        valid_metrics_list = MLP_valid(valid_dataloader, model, loss_fn, device, labeltype)
+        train_metrics_list = run_train(train_dataloader, model, loss_fn, optimizer, device, labeltype)
+        valid_metrics_list = run_valid(valid_dataloader, model, loss_fn, device, labeltype)
 
         print(f"epoch: {epo}; train_loss: {train_metrics_list[0]:>7f}; valid_loss: {valid_metrics_list[0]:>7f}")
         with open(output+'.metrics.txt', 'a') as log:
@@ -556,7 +647,6 @@ def Attention_train_valid(train_dataloader, valid_dataloader, featurecount, nepo
     plot_loss(output+'.metrics.txt', output+'.metrics.pdf')
 
     return str(model)
-
 
 
 def timer(start_time, end_time):
@@ -614,13 +704,12 @@ def main():
 
     ######################################
     
-    train_dataloader, valid_dataloader, featurecount = build_data(args.inputX, args.inputY, args.rankEXP, args.rankSNP, args.rankMUT, args.feature_size, args.label_type, args.batch_size, args.num_workers, args.out)
+    train_dataloader, valid_dataloader, featurecount = build_data(args.model_type, args.inputX, args.inputY, args.rankEXP, args.rankSNP, args.rankMUT, args.feature_size, args.label_type, args.batch_size, args.num_workers, args.out)
 
     if args.model_type == 'MLP':
         modelstructure = MLP_train_valid(train_dataloader, valid_dataloader, featurecount, args.nepoch, args.label_type, device, args.lr, args.out)
     else:
         modelstructure = Attention_train_valid(train_dataloader, valid_dataloader, featurecount, args.nepoch, args.label_type, device, args.lr, args.out)
-        print('not supported yet')
 
     ######################################
 
