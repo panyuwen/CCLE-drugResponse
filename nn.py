@@ -46,19 +46,36 @@ class ImportDataSet(Dataset):
         return x, y
     
     def __featuresize__(self):
-        return len(self.X[0])
+        return np.prod(self.X.shape) / self.X.shape[0]
+
+
+def dim_pad(X, featurelist, d_model):
+    if len(featurelist) % d_model == 0:
+        return X[featurelist].values
+    else:
+        return np.pad(X[featurelist].values, ((0, 0), (0, d_model-len(featurelist)%d_model)), 'constant', constant_values=0)
 
 
 def converf4atten(X, d_model):
     """
     Args:
-        X (pd.DataFrame), #cell x #feature
+        X (pd.DataFrame), #cell x #feature (indictors + SNP+EXP+MUT)
     Output:
         X (np.array), #cell * len x d_model
     """
-    pass
+    cols = list(X.columns)
+    
+    idxf = [x for x in cols if x.split('_')[-1] not in ['SNP','EXP','MUT']]
+    snpf = [x for x in cols if x.split('_')[-1] == 'SNP']
+    expf = [x for x in cols if x.split('_')[-1] == 'EXP']
+    mutf = [x for x in cols if x.split('_')[-1] == 'MUT']
+    
+    Xpad = np.concatenate([dim_pad(X, idxf, d_model), dim_pad(X, snpf, d_model), dim_pad(X, expf, d_model), dim_pad(X, mutf, d_model)], axis=1).reshape([X.shape[0], -1, d_model])
 
-def build_data(modeltype, inputX, inputY, rankEXP, rankSNP, rankMUT, featuresize, labeltype, batch_size, num_workers, output, *others):
+    return Xpad
+
+
+def build_data(modeltype, inputX, inputY, rankEXP, rankSNP, rankMUT, featuresize, labeltype, batch_size, num_workers, output, d_model):
     X = pd.read_csv(inputX, sep='\t', index_col=['cell'])
     Y = pd.read_csv(inputY, header=None)
     if labeltype == 'discrete':
@@ -82,7 +99,7 @@ def build_data(modeltype, inputX, inputY, rankEXP, rankSNP, rankMUT, featuresize
 
     celltypelist = list(set(X.index))
     X.drop(celltypelist, axis=1, inplace=True)
-    
+
     with open(output + '.featurelist.txt', 'w') as fin:
         for i in list(X.columns):
             fin.write(i + '\n')
@@ -91,14 +108,14 @@ def build_data(modeltype, inputX, inputY, rankEXP, rankSNP, rankMUT, featuresize
     if modeltype == 'MLP':
         data = ImportDataSet(X.values, Y.values)
     else:
-        data = ImportDataSet(converf4atten(X, others[0]), Y.values)
+        data = ImportDataSet(converf4atten(X, d_model), Y.values)
         
     train_data, valid_data = random_split(dataset=data, lengths=[0.9,0.1])
 
     train_dataloader = DataLoader(train_data, batch_size=batch_size, num_workers=num_workers, shuffle=True, drop_last=True)
     valid_dataloader = DataLoader(valid_data, batch_size=batch_size, num_workers=num_workers, shuffle=True, drop_last=True)
 
-    return train_dataloader, valid_dataloader, X.shape[1]
+    return train_dataloader, valid_dataloader, int(data.__featuresize__())
 
 
 class MLP(nn.Module):
@@ -190,6 +207,13 @@ class continuous_metrics():
         # count
         self.count += len(y_true)
     
+    def check(self):
+        return {'R2_numerator_sum': self.R2_numerator_sum, 
+                'R2_denominator_sum': self.R2_denominator_sum, 
+                'MAE_sum': self.MAE_sum, 
+                'MSE_sum': self.MSE_sum, 
+                'count': self.count}
+
     def output(self):
         R2 = 1 - self.R2_numerator_sum / self.R2_denominator_sum
         MAE = self.MAE_sum / self.count
@@ -203,34 +227,20 @@ class continuous_metrics():
 #     For one-class
 #     """
 #     def __init__(self):
-#         self.TP = 0
-#         self.FP = 0
-#         self.FN = 0
-#         self.TN = 0
-#         self.AUC_sum = 0
-#         self.nbatch = 0
+#         self.TP = 0; self.FP = 0; self.FN = 0; self.TN = 0; self.AUC_sum = 0; self.nbatch = 0
 
 #     def reset(self):
-#         self.TP = 0
-#         self.FP = 0
-#         self.FN = 0
-#         self.TN = 0
-#         self.AUC_sum = 0
-#         self.nbatch = 0
+#         self.TP = 0; self.FP = 0; self.FN = 0; self.TN = 0; self.AUC_sum = 0; self.nbatch = 0
 
 #     def update(self, y_true, y_pred):
 #         y_pred_prob = F.softmax(y_pred, dim=1)
 #         y_pred_clas = y_pred_prob.argmax(1)
-
 #         y_true = y_true[:, 1]
-        
 #         self.TP += sum((y_pred_clas == 1) & (y_true == 1))
 #         self.FP += sum((y_pred_clas == 1) & (y_true == 0))
 #         self.FN += sum((y_pred_clas == 0) & (y_true == 1))
 #         self.TN += sum((y_pred_clas == 0) & (y_true == 0))
-
 #         self.AUC_sum += roc_auc_score(y_true.cpu().detach().numpy(), y_pred_prob[:,1].cpu().detach().numpy())
-
 #         self.nbatch += 1
     
 #     def output(self):
@@ -239,7 +249,6 @@ class continuous_metrics():
 #         recall = self.TP * 1.0 / (self.TP + self.FN)
 #         f1 = 2.0 * self.TP / (2 * self.TP + self.FP + self.FN)
 #         auc = self.AUC_sum / self.nbatch
-
 #         return auc, f1.item(), precision.item(), recall.item(), acc.item()
 
 
@@ -247,7 +256,7 @@ class discrete_metrics():
     """
     For multi-class
     Returns: 
-    class1-metrics;class2-metrics;...;macro(average)-metrics
+        class1-metrics;class2-metrics;...;macro(average)-metrics
     """
     def __init__(self):
         self.TP = []
@@ -289,13 +298,21 @@ class discrete_metrics():
 
         self.nbatch += 1
     
+    def check(self):
+        return {'TP': self.TP, 
+                'FP': self.FP, 
+                'FN': self.FN, 
+                'TN': self.TN, 
+                'AUC_sum': self.AUC_sum, 
+                'nbatch': self.nbatch}
+
     def output(self):
         self.TP = np.array(self.TP)
         self.FP = np.array(self.FP)
         self.FN = np.array(self.FN)
         self.TN = np.array(self.TN)
         self.AUC_sum = np.array(self.AUC_sum)
-
+        
         acc = (self.TP + self.TN) * 1.0 / (self.TP + self.TN + self.FP + self.FN)
         precision = self.TP * 1.0 / (self.TP + self.FP)
         recall = self.TP * 1.0 / (self.TP + self.FN)
@@ -438,6 +455,7 @@ class ScaledDotProductAttention(nn.Module):
 
     def forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         # batch_size·num_head x len x d_head for Q/K/V
+        # d_head = d_model x num_head
         
         # attention scores
         # B·N x l x l
@@ -448,11 +466,11 @@ class ScaledDotProductAttention(nn.Module):
 
         # attention weights
         # softmax activation applied along the last dimension, d_head
-        # B·N x l x l
+        # Batch·#head x len x len
         attn = F.softmax(score, -1)
         
         # Attended Value
-        # B·N x l x d_head
+        # Batch·#head x len x d_head
         context = torch.bmm(attn, value)
         
         return context, attn
@@ -512,27 +530,27 @@ class MultiHeadAttention(nn.Module):
     def forward(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         batch_size = value.size(0)
 
-        # Linear transformations
-        # followed by 
-        # Reshape the inputs for multihead splitting
+        # Linear transformations followed by Reshaping the inputs for multihead splitting
+        # B: batch size; N: num_head; D: d_head
         query = self.query_proj(query).view(batch_size, -1, self.num_heads, self.d_head)  # B x Q_LEN x N x D
         key = self.key_proj(key).view(batch_size, -1, self.num_heads, self.d_head)        # B x K_LEN x N x D
         value = self.value_proj(value).view(batch_size, -1, self.num_heads, self.d_head)  # B x V_LEN x N x D
 
-        query = query.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)  # B·N x Q_LEN x D
-        key = key.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)      # B·N x K_LEN x D
-        value = value.permute(2, 0, 1, 3).contiguous().view(batch_size * self.num_heads, -1, self.d_head)  # B·N x V_LEN x D
+        query = query.permute(2, 0, 1, 3).contiguous().view(self.num_heads * batch_size, -1, self.d_head)  # B·N x Q_LEN x D
+        key = key.permute(2, 0, 1, 3).contiguous().view(self.num_heads * batch_size, -1, self.d_head)      # B·N x K_LEN x D
+        value = value.permute(2, 0, 1, 3).contiguous().view(self.num_heads * batch_size, -1, self.d_head)  # B·N x V_LEN x D
 
         if mask is not None:
             mask = mask.unsqueeze(1).repeat(1, self.num_heads, 1, 1)  # B x N x Q_LEN x K_LEN
 
-        # attention weight: B·N x l x l
-        # attended Value: B·N x l x d_head
+        # attn:    attention weight, B·N x l x l
+        # context: attended Value, B·N x l x d_head
         context, attn = self.scaled_dot_attn(query, key, value, mask)
-        # N x B x l x d_head
+
+        # -> N x B x l x d_head
         context = context.view(self.num_heads, batch_size, -1, self.d_head)
-        # B x l x N x d_head
-        # B x l x N·d_head = B x l x d_model
+
+        # -> B x l x N x d_head -> B x l x N·d_head = B x l x d_model
         context = context.permute(1, 2, 0, 3).contiguous().view(batch_size, -1, self.num_heads * self.d_head)  # B x T x ND
 
         return context, attn
@@ -551,23 +569,21 @@ class LayerNorm(nn.Module):
 
         out = (x - mean) / torch.sqrt(var + self.eps)
         out = self.gamma * out + self.beta
-        
+
         return out
 
 
 class FeedForward(nn.Module):
     def __init__(self, d_model, hidden, dropoutProb=0.15):
         super().__init__()
-        self.linear1 = nn.Linear(d_model, hidden)
-        self.dropout = nn.Dropout(dropoutProb)
-        self.linear2 = nn.Linear(hidden, d_model)
+        self.linear = nn.Linear(d_model, hidden)
         self.activation = nn.ReLU()
+        # self.dropout = nn.Dropout(dropoutProb)
 
     def forward(self, x):
-        x = self.linear1(x)
+        x = self.linear(x)
         x = self.activation(x)
-        x = self.dropout(x)
-        x = self.linear2(x)
+        # x = self.dropout(x)
         return x
 
 
@@ -578,30 +594,33 @@ class Attention(nn.Module):
         self.layernorm = LayerNorm(d_model)
         self.dropout = nn.Dropout(dropoutProb)
         self.feedforward = FeedForward(d_model, d_model)
-        self.to_output1 = nn.Sequential(
+        self.collapse_dim_d_model = nn.Sequential(
             nn.Linear(d_model, d_model),
+            nn.ReLU(),
             nn.Dropout(dropoutProb),
-            nn.Linear(d_model, 1)
+            nn.Linear(d_model, 1),
+            nn.ReLU()
         )
-        self.to_output2 = nn.Sequential(
+        self.collapse_dim_len = nn.Sequential(
             nn.Linear(l, l),
+            nn.ReLU(),
             nn.Dropout(dropoutProb),
             nn.Linear(l, out_featuresize)
         )
         
     def forward(self, x):
-        x_ = self.multi_head_attention(query=x, key=x, value=x)
+        x_, attn = self.multi_head_attention(query=x, key=x, value=x)
         x_ = self.dropout(x_)
         x = self.layernorm(x + x_)
         
         x_ = self.feedforward(x)
         x_ = self.dropout(x_)
         x = self.layernorm(x + x_)
-        
-        x = self.to_output1(x)
+
+        x = self.collapse_dim_d_model(x)
         x = torch.squeeze(x, dim=-1)
-        x = self.to_output2(x)
-        
+        x = self.collapse_dim_len(x)
+
         return x
 
 
@@ -676,7 +695,8 @@ def main():
     parser.add_argument("--lr", type=float, required=False, default=5e-5)
     parser.add_argument("--nepoch", type=int, required=False, default=500)
     parser.add_argument("--device-id", type=str, required=False, choices=['0','1','2','3'], default='0')
-
+    parser.add_argument("--d_model", type=int, required=False, default=64)
+    
     parser.add_argument("--feature-size", type=str, required=True, choices=['18K','10K','5K','1K'])
     parser.add_argument("--label-type", type=str, required=True, choices=['continuous', 'discrete'])
     parser.add_argument("--model-type", type=str, required=True, choices=['MLP', 'Attention'])
@@ -704,12 +724,16 @@ def main():
 
     ######################################
     
-    train_dataloader, valid_dataloader, featurecount = build_data(args.model_type, args.inputX, args.inputY, args.rankEXP, args.rankSNP, args.rankMUT, args.feature_size, args.label_type, args.batch_size, args.num_workers, args.out)
+    train_dataloader, valid_dataloader, featurecount = build_data(args.model_type, args.inputX, args.inputY, args.rankEXP, args.rankSNP, args.rankMUT, args.feature_size, args.label_type, args.batch_size, args.num_workers, args.out, args.d_model)
+
+    with open(args.out + '.logfile', 'a') as log:
+        log.write('Data building: '+time.strftime("%Y-%m-%d %X",time.localtime())+'\n')
+
 
     if args.model_type == 'MLP':
         modelstructure = MLP_train_valid(train_dataloader, valid_dataloader, featurecount, args.nepoch, args.label_type, device, args.lr, args.out)
     else:
-        modelstructure = Attention_train_valid(train_dataloader, valid_dataloader, featurecount, args.nepoch, args.label_type, device, args.lr, args.out)
+        modelstructure = Attention_train_valid(train_dataloader, valid_dataloader, featurecount // args.d_model, args.d_model, args.nepoch, args.label_type, device, args.lr, args.out)
 
     ######################################
 
@@ -738,9 +762,10 @@ if __name__ == '__main__':
 #         self.lr = 5e-5
 #         self.nepoch = 500
 #         self.device_id = '0'
-#         self.feature_size = '5K'
-#         self.label_type = 'continuous'
-#         self.model_type = 'MLP'
+#         self.feature_size = '18K'
+#         self.label_type = 'discrete'
+#         self.model_type = 'Attention'
+#         self.d_model = 128
 #         self.out = 'test'
 
 # args = argstmp()
