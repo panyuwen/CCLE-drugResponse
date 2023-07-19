@@ -24,6 +24,7 @@ python nn.py -h
 ```shell
 # e.g., 
 python nn.py --device-id 0 --feature-size 10K --label-type continuous --model-type MLP --out MLP.10K.continuous
+python nn.py --device-id 1 --feature-size 18K --label-type discrete --d_model 64 --model-type Attention --out Attn.18K.discrete
 ```
 
 ---
@@ -32,11 +33,11 @@ Contact: [panyuwen.x@gmail.com](mailto:panyuwen.x@gmail.com)
 
 
 ## Change log
-### v0.0.3 beta
+### v0.0.3
 
 merge elasticnet & bayes; options for featuresize; define a dataset for benchmark analysis    
-for MLP, tumor type, and compound were one-hot encoded in the input data; continuous & discrete labels    
-attention is under development
+for NN (both MLP & attention), tumor type, and compound were one-hot encoded in the input data; continuous & discrete labels    
+for attention-based model, a feature array is reshaped into a matrix with shape (d_model x Q/K/V_len), 8 heads are implemented    
 
 ### v0.0.2
 
