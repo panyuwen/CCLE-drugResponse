@@ -2,7 +2,7 @@
 drug response prediction based on the CCLE data
 
 
-## ElasticNet regression / NaiveBayes classification 
+## ElasticNet regression / NaiveBayes classifier 
 
 ```shell
 # usage:
