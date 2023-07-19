@@ -515,7 +515,7 @@ class MultiHeadAttention(nn.Module):
         - **output** (batch, output_len, dimensions): tensor containing the attended output features.
         - **attn** (batch * num_heads, v_len): tensor containing the attention (alignment) from the encoder outputs.
     """
-    def __init__(self, d_model: int, num_heads: int = 8):
+    def __init__(self, d_model: int, num_heads: int = 4):
         super(MultiHeadAttention, self).__init__()
 
         assert d_model % num_heads == 0, "d_model % num_heads should be zero."
