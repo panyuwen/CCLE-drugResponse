@@ -1,19 +1,6 @@
 # CCLE-drugResponse (developing)
 drug response prediction based on the CCLE data
 
-
-## ElasticNet regression / NaiveBayes classifier 
-
-```shell
-# usage:
-python elasticnet_bayes.py -h
-```
-
-```shell
-# e.g., 
-python elasticnet_bayes.py --featuresize 10K --datatype EXP_SNP --compound separate --modeltype elasticnet --out elasticnet.10K.EXP_SNP.separate
-```
-
 ## Deep Neural Network   
 
 ```shell
@@ -25,6 +12,19 @@ python nn.py -h
 # e.g., 
 python nn.py --device-id 0 --feature-size 10K --label-type continuous --model-type MLP --out MLP.10K.continuous
 python nn.py --device-id 1 --feature-size 18K --label-type discrete --d_model 64 --model-type Attention --out Attn.18K.discrete
+```
+
+
+## ElasticNet regression / NaiveBayes classifier 
+
+```shell
+# usage:
+python elasticnet_bayes.py -h
+```
+
+```shell
+# e.g., 
+python elasticnet_bayes.py --featuresize 10K --datatype EXP_SNP --compound separate --modeltype elasticnet --out elasticnet.10K.EXP_SNP.separate
 ```
 
 ---
