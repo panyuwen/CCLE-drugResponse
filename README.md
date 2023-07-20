@@ -37,6 +37,7 @@ Contact: [panyuwen.x@gmail.com](mailto:panyuwen.x@gmail.com)
 
 to implement VAE for dimentional reduction -> statistical models + nn models    
 to fix the training & validation data sets    
+to use SMILE code (maybe)    
 
 ### v0.0.3
 
