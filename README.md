@@ -33,6 +33,11 @@ Contact: [panyuwen.x@gmail.com](mailto:panyuwen.x@gmail.com)
 
 
 ## Change log
+### v0.0.4 (developing)
+
+to implement VAE for dimentional reduction -> statistical models + nn models    
+to fix the training & validation data sets    
+
 ### v0.0.3
 
 merge elasticnet & bayes; options for featuresize; define a dataset for benchmark analysis    
@@ -47,8 +52,4 @@ fix some bugs; more features included
 ### v0.0.1
 
 the initial elasticNet & bayes model, following the instruction of the early CCLE paper (The Cancer Cell Line Encyclopedia enables predictive modelling of anticancer drug sensitivity. Nature. 2012)   
-
-
-
-
 
