@@ -200,15 +200,15 @@ def timer(start_time, end_time):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--inputX", type=str, required=False, default="/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/EXP_MUT_SNP.scale18K.X.txt.gz")
-    parser.add_argument("--inputY", type=str, required=False, default="/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/EXP_MUT_SNP.scale18K.Y.txt")
-    parser.add_argument("--rankEXP", type=str, required=False, default="/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/EXP_logIC50.cor_rank.txt")
-    parser.add_argument("--rankSNP", type=str, required=False, default="/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/SNP_logIC50.cor_rank.txt")
-    parser.add_argument("--rankMUT", type=str, required=False, default="/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/MUT_logIC50.cor_rank.txt")
+    parser.add_argument("--inputX", type=str, required=False, default="EXP_MUT_SNP.scale18K.X.txt.gz")
+    parser.add_argument("--inputY", type=str, required=False, default="EXP_MUT_SNP.scale18K.Y.txt")
+    parser.add_argument("--rankEXP", type=str, required=False, default="cor/EXP_logIC50.cor_rank.txt")
+    parser.add_argument("--rankSNP", type=str, required=False, default="cor/SNP_logIC50.cor_rank.txt")
+    parser.add_argument("--rankMUT", type=str, required=False, default="cor/MUT_logIC50.cor_rank.txt")
     parser.add_argument("--featuresize", type=str, required=True, choices=['18K','10K','5K','1K'])
     parser.add_argument("--datatype", type=str, required=True, choices=['EXP','MUT','SNP','EXP_MUT','EXP_SNP','SNP_MUT','EXP_SNP_MUT'])
     parser.add_argument("--compound", type=str, required=True, choices=['combine', 'separate'])
-    parser.add_argument("--compoundinfo", type=str, required=False, default="/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/00.data/compound.list")
+    parser.add_argument("--compoundinfo", type=str, required=False, default="../00.data/compound.list")
     parser.add_argument("--modeltype", type=str, required=True, choices=['elasticnet', 'bayes'])
     parser.add_argument("--out", type=str, required=True)
     args = parser.parse_args()
@@ -251,16 +251,16 @@ def main():
 if __name__ == '__main__':
     main()
 
-# inputX = "/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/EXP_MUT_SNP.scale18K.X.txt.gz"
-# inputY = "/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/EXP_MUT_SNP.scale18K.Y.txt"
-# rankEXP = "/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/EXP_logIC50.cor_rank.txt"
-# rankSNP = "/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/SNP_logIC50.cor_rank.txt"
-# rankMUT = "/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/MUT_logIC50.cor_rank.txt"
+# inputX = "EXP_MUT_SNP.scale18K.X.txt.gz"
+# inputY = "EXP_MUT_SNP.scale18K.Y.txt"
+# rankEXP = "cor/EXP_logIC50.cor_rank.txt"
+# rankSNP = "cor/SNP_logIC50.cor_rank.txt"
+# rankMUT = "cor/MUT_logIC50.cor_rank.txt"
 
 # featuresize = '10K'
 # datatype = 'EXP_SNP'
 # compound = 'separate'
-# compoundinfo = "/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/00.data/compound.list"
+# compoundinfo = "../00.data/compound.list"
 
 # modeltype = 'elasticnet'
 # out = 'test'
