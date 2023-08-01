@@ -680,15 +680,15 @@ def timer(start_time, end_time):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--inputX", type=str, required=False, \
-                        default="/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/EXP_MUT_SNP.scale18K.X.txt.gz")
+                        default="EXP_MUT_SNP.scale18K.X.txt.gz")
     parser.add_argument("--inputY", type=str, required=False, \
-                        default="/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/EXP_MUT_SNP.scale18K.Y.txt")
+                        default="EXP_MUT_SNP.scale18K.Y.txt")
     parser.add_argument("--rankEXP", type=str, required=False, \
-                        default="/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/EXP_logIC50.cor_rank.txt")
+                        default="cor/EXP_logIC50.cor_rank.txt")
     parser.add_argument("--rankSNP", type=str, required=False, \
-                        default="/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/SNP_logIC50.cor_rank.txt")
+                        default="cor/SNP_logIC50.cor_rank.txt")
     parser.add_argument("--rankMUT", type=str, required=False, \
-                        default="/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/MUT_logIC50.cor_rank.txt")
+                        default="cor/MUT_logIC50.cor_rank.txt")
     
     parser.add_argument("--batch-size", type=int, required=False, default=128)
     parser.add_argument("--num-workers", type=int, required=False, default=16, help="for DataLoader")
@@ -752,11 +752,11 @@ if __name__ == '__main__':
 
 # class argstmp():
 #     def __init__(self):
-#         self.inputX = "/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/EXP_MUT_SNP.scale18K.X.txt.gz"
-#         self.inputY = "/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/EXP_MUT_SNP.scale18K.Y.txt"
-#         self.rankEXP = "/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/EXP_logIC50.cor_rank.txt"
-#         self.rankSNP = "/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/SNP_logIC50.cor_rank.txt"
-#         self.rankMUT = "/glusterfs/home/local_pan_yuwen/research/20230608_CCLE2012/03.NN/cor/MUT_logIC50.cor_rank.txt"
+#         self.inputX = "EXP_MUT_SNP.scale18K.X.txt.gz"
+#         self.inputY = "EXP_MUT_SNP.scale18K.Y.txt"
+#         self.rankEXP = "cor/EXP_logIC50.cor_rank.txt"
+#         self.rankSNP = "cor/SNP_logIC50.cor_rank.txt"
+#         self.rankMUT = "cor/MUT_logIC50.cor_rank.txt"
 #         self.batch_size = 128
 #         self.num_workers = 16
 #         self.lr = 5e-5
